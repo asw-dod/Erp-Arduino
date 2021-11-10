@@ -1,6 +1,7 @@
 #include <Servo.h>
 
 #define DEBUG_MODE
+#define TEST_MODE
 
 #define STX_NUM 0
 #define LENGTH_NUM 1
@@ -64,35 +65,49 @@ byte protocol_data[256] = { 0, };
 byte protocol_send[256] = { 0, };
 
 void device_health(byte* data) {
-  struct recv_device_lock recv = *(struct recv_device_lock*)(data);
-
-  Serial.println("---- RECEIVE ----");
-  Serial.println(recv.stx);
-  Serial.println(recv.length);
-  Serial.println(recv.protocol);
-  Serial.println(recv.data_lock);
-  Serial.println(recv.check_sum);
-  Serial.println(recv.etx);
-  Serial.println("---- RECEIVE FINISHED ----");
-  servo.write(-100);
-  delay(500);
-}
-
-void device_lock(byte* data) {
   struct recv_device_health recv = *(struct recv_device_health*)(data);
-
-  Serial.println("---- RECEIVE ----");
+  
+  Serial.println("@---- RECEIVE ----");
   Serial.println(recv.stx);
   Serial.println(recv.length);
   Serial.println(recv.protocol);
   Serial.println(recv.data_connect_check);
   Serial.println(recv.check_sum);
   Serial.println(recv.etx);
-  Serial.println("---- RECEIVE FINISHED ----");
-  servo.write(-100);
+  Serial.println("---- RECEIVE FINISHED ----%");
 
-  servo.write(100);
-  delay(500);
+}
+
+void device_lock(byte* data) {
+  struct recv_device_lock recv = *(struct recv_device_lock*)(data);
+
+  Serial.println("@---- RECEIVE ----");
+  Serial.println(recv.stx);
+  Serial.println(recv.length);
+  Serial.println(recv.protocol);
+  Serial.println(recv.data_lock);
+  Serial.println(recv.check_sum);
+  Serial.println(recv.etx);
+  Serial.println("---- RECEIVE FINISHED ----%");
+  
+  if (recv.data_lock == 0) {
+    servo.write(-100);
+  }else {
+    servo.write(100);
+  }
+
+  struct ack_device_lock ack;
+  ack.stx = '$';
+  ack.length = 6;
+  ack.protocol = recv.protocol;
+  ack.data_lock = servo.read() > 0 ? true : false;
+  ack.check_sum = 0;
+  ack.etx = '#';
+  byte* ack_data = (byte*)(&ack);
+
+  make_checksum(ack_data);
+  Serial.write(ack_data, LENGTH(ack_data));
+  
 }
 
 bool check_checksum(byte* data) {
@@ -144,8 +159,11 @@ void read_data() {
       STX(protocol_data) = '$';
 
       while (Serial.available() == 0);
+#ifdef TEST_MODE
       LENGTH(protocol_data) = Serial.read() - '0';
-
+#else
+      LENGTH(protocol_data) = Serial.read();
+#endif
       if (sizeof(protocol_data) < LENGTH(protocol_data)) {
         send_nack(PROTOCOL(protocol_data));
       }
@@ -185,17 +203,15 @@ void read_data() {
 
 void setup()
 {
-  randomSeed(analogRead(0));
 
   Serial.begin(9600);
   Serial.println("@0:setup start");
   servo.attach(servoPin);
   Serial.println(sizeof(int));
-  Serial.println("@0:servo motor setup");
-  servo.write(-100);
-  delay(500);
+  Serial.println("0:servo motor setup");
+  Serial.println("0:setup finished%");
 
-  Serial.println("@0:setup finished");
+  servo.write(-100);
 }
 
 
