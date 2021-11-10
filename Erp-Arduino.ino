@@ -25,7 +25,6 @@ bool check_checksum(byte* data) {
   int size = LENGTH(data);
   int check = 0;
 
-  Serial.println("AAAEEAEAE");
   for (int i = 0; i < size; i++) {
     check ^= data[i];
   }
