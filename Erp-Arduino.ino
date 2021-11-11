@@ -76,11 +76,28 @@ void device_health(byte* data) {
   Serial.println(recv.etx);
   Serial.println("---- RECEIVE FINISHED ----%");
 
+  struct ack_device_health ack;
+  ack.stx = '$';
+  ack.length = 6;
+  ack.protocol = recv.protocol;
+  ack.data_device_health = 1;
+  digitalWrite(8, 0);
+  digitalRead(8);
+  digitalWrite(8, 255);
+  
+  ack.data_motor_health = digitalRead(8);
+  ack.data_lock = servo.read() > 0 ? true : false;
+  ack.check_sum = 0;
+  ack.etx = '#';
+
+  byte* ack_data = (byte*)(&ack);
+  make_checksum(ack_data);
+  Serial.write(ack_data, LENGTH(ack_data));
 }
 
 void device_lock(byte* data) {
   struct recv_device_lock recv = *(struct recv_device_lock*)(data);
-
+  
   Serial.println("@---- RECEIVE ----");
   Serial.println(recv.stx);
   Serial.println(recv.length);
@@ -107,7 +124,6 @@ void device_lock(byte* data) {
 
   make_checksum(ack_data);
   Serial.write(ack_data, LENGTH(ack_data));
-  
 }
 
 bool check_checksum(byte* data) {
