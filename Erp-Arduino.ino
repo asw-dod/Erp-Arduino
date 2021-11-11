@@ -160,6 +160,7 @@ void send_nack(int protocol) {
   PROTOCOL(data) = 0x41;
   data[3] = protocol;
   data[4] = 73;
+  CHECK(data) = 0;
   ETX(data) = '#';
   LAST(data) = '\0';
 
