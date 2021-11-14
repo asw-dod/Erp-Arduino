@@ -66,7 +66,7 @@ byte protocol_send[256] = { 0, };
 
 void device_health(byte* data) {
   struct recv_device_health recv = *(struct recv_device_health*)(data);
-  
+
   Serial.println("@---- RECEIVE ----");
   Serial.println(recv.stx);
   Serial.println(recv.length);
@@ -84,7 +84,7 @@ void device_health(byte* data) {
   digitalWrite(8, 0);
   digitalRead(8);
   digitalWrite(8, 255);
-  
+
   ack.data_motor_health = digitalRead(8);
   ack.data_lock = servo.read() > 0 ? true : false;
   ack.check_sum = 0;
@@ -97,7 +97,7 @@ void device_health(byte* data) {
 
 void device_lock(byte* data) {
   struct recv_device_lock recv = *(struct recv_device_lock*)(data);
-  
+
   Serial.println("@---- RECEIVE ----");
   Serial.println(recv.stx);
   Serial.println(recv.length);
@@ -106,10 +106,10 @@ void device_lock(byte* data) {
   Serial.println(recv.check_sum);
   Serial.println(recv.etx);
   Serial.println("---- RECEIVE FINISHED ----%");
-  
+
   if (recv.data_lock == 0) {
     servo.write(-100);
-  }else {
+  } else {
     servo.write(100);
   }
 
@@ -172,16 +172,26 @@ void send_nack(int protocol) {
 void read_data() {
   if (Serial.available() > 0) {
     byte stx = Serial.read();
+    Serial.print("@첫번째 데이터 인식 코드 : ");
+    Serial.print(stx);
+    Serial.println("%");
+    
     if (stx == '$') {
+      Serial.println("@데이터 STX 인식%");
       STX(protocol_data) = '$';
-
+      
       while (Serial.available() == 0);
 #ifdef TEST_MODE
       LENGTH(protocol_data) = Serial.read() - '0';
 #else
       LENGTH(protocol_data) = Serial.read();
 #endif
+      Serial.print("@");
+      Serial.print(LENGTH(protocol_data));
+      Serial.println(": 사이즈 인식%");
+
       if (sizeof(protocol_data) < LENGTH(protocol_data)) {
+        Serial.println("@데이터의 크기가 비 정상적으로 큼%");
         send_nack(PROTOCOL(protocol_data));
       }
 
@@ -192,22 +202,31 @@ void read_data() {
 
       // Checksum 검사
 #ifndef DEBUG_MODE
+      Serial.println("@Serial Checksum 계산 시작%");
+      Serial.println("@Serial ETX 값이 옳바른지 검사%");
       if (!check_checksum(protocol_data)) {
+        Serial.println("@Serial Checksum 데이터 무결성 검사 실패%");
         send_nack(PROTOCOL(protocol_data));
       }
       // ETX 값 검사.
       else if (ETX(protocol_data) != '#') {
+        Serial.println("@Serial ETX 값이 옳바른지 검사 실패%");
         send_nack(PROTOCOL(protocol_data));
       } else {
+#else
+      Serial.println("@데이터 무결성 검사 생략 모드%");
 #endif
         switch (PROTOCOL(protocol_data)) {
           case 'A':
+            Serial.println("@A 프로토콜%");
             device_health(protocol_data);
             break;
           case 'B':
+            Serial.println("@B 프로토콜%");
             device_lock(protocol_data);
             break;
           default:
+            Serial.println("@알수없는 프로토콜 결과가 나%");
             send_nack(PROTOCOL(protocol_data));
             break;
         }
